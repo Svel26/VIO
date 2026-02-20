@@ -10,6 +10,9 @@ export class BrowserManager {
     private browser: Browser | null = null;
     private context: BrowserContext | null = null;
     private page: Page | null = null;
+    get isInitialized(): boolean {
+        return this.page !== null;
+    }
 
     async initialize() {
         if (this.browser || this.page) return;

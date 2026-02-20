@@ -311,13 +311,23 @@ export async function startCoreLoop(objective: string): Promise<void> {
             name: 'execute_javascript',
             description: 'Execute JavaScript in the browser page context. Use this to click buttons, fill forms, read content — it targets DOM elements directly with zero coordinate error. PREFERRED over click_ui for anything in the browser.',
             parameters: ExecuteJavaScriptSchema,
-            handler: async (args) => await executeJavaScript(args as Parameters<typeof executeJavaScript>[0], await browser.getPage())
+            handler: async (args) => {
+                if (!browser.isInitialized) {
+                    return { success: false, error: "Browser is not open. You cannot use execute_javascript on native desktop apps. Use navigate_to first if you intend to browse the web." };
+                }
+                return await executeJavaScript(args as Parameters<typeof executeJavaScript>[0], await browser.getPage());
+            }
         },
         {
             name: 'extract_page_data',
             description: 'Extract structured text/HTML content from the current browser page.',
             parameters: ExtractPageDataSchema,
-            handler: async (args) => await extractPageData(args as Parameters<typeof extractPageData>[0], await browser.getPage())
+            handler: async (args) => {
+                if (!browser.isInitialized) {
+                    return { success: false, error: "Browser is not open. You cannot use extract_page_data on native desktop apps." };
+                }
+                return await extractPageData(args as Parameters<typeof extractPageData>[0], await browser.getPage());
+            }
         },
         {
             name: 'wait_for_human',

@@ -80,7 +80,9 @@ Only call \`declare_success\` when you have **concrete evidence** the objective 
 - You can see the expected result on screen
 - A CLI command returned the expected output
 - A web page shows the expected content
-Do NOT declare success just because you performed an action — verify the outcome first.
+- **For Native Apps without OCR:** Your vision model (YOLO) cannot read text. If you successfully clicked the target area and executed \`type_text\`, you MUST trust that the typing succeeded. Do NOT try to use web tools (like \`extract_page_data\`) or CLI hacks just to verify native text.
+
+Do NOT declare success just because you performed an action — verify the outcome first (except in the allowed OCR-blind scenarios).
 
 ## Output Format
 Think step by step but be concise. Focus on what you observe and what you'll do next. Do not repeat the full observation back — I already have it.`;
