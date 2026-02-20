@@ -103,18 +103,37 @@ export async function executeCli(params: ExecuteCliParams): Promise<ExecuteCliRe
 
     return new Promise((resolve) => {
         // Determine shell block depending on platform for complex commands
+        // spawn with detached=true so we can kill the entire group later.
         const child = spawn(command, [], {
             cwd,
             shell: true,
             env: process.env,
+            detached: true,
         });
+        // allow parent to exit independently of child
+        child.unref();
+
+        const killProcessTree = () => {
+            try {
+                if (child.pid) {
+                    if (process.platform === 'win32') {
+                        execSync(`taskkill /pid ${child.pid} /t /f`);
+                    } else {
+                        // negative pid targets the process group
+                        process.kill(-child.pid, 'SIGKILL');
+                    }
+                }
+            } catch {
+                // best-effort
+            }
+        };
 
         let stdoutData = '';
         let stderrData = '';
 
         const timeoutId = setTimeout(() => {
-            logger.warn(`Command timeout reached (${timeoutMs}ms). Killing process...`);
-            child.kill('SIGKILL');
+            logger.warn(`Command timeout reached (${timeoutMs}ms). Killing process tree...`);
+            killProcessTree();
             resolve({
                 success: false,
                 stdout: trimOutput(stdoutData),

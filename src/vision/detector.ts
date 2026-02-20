@@ -1,6 +1,6 @@
 import fs from 'fs';
 import * as ort from 'onnxruntime-node';
-import { createCanvas, loadImage, Image } from 'canvas';
+import sharp from 'sharp';
 import { logger } from '../utils/logger.js';
 import { DETECTION_CONF_THRESHOLD, NMS_IOU_THRESHOLD, MODEL_INPUT_SIZE } from '../utils/config.js';
 
@@ -38,22 +38,22 @@ export class UIDetector {
         }
     }
 
-    /**
-     * Run detection on a base64 image string.
+        /**
+     * Run detection on a raw image buffer.  The buffer should contain
+     * a screenshot (PNG, JPEG, etc.) and the caller must provide the
+     * original width/height of the screenshot so that coordinate scaling
+     * can be computed correctly.
      */
-    async detect(base64Image: string): Promise<DetectedElement[]> {
+    async detect(imageBuffer: Buffer, originalWidth: number, originalHeight: number): Promise<DetectedElement[]> {
         if (!this.session) {
             logger.warn('Detector session not initialized. Returning empty detections.');
             return [];
         }
 
         try {
-            const img = await loadImage(`data:image/png;base64,${base64Image}`);
-            const tensor = this.preprocess(img);
-
+            const tensor = await this.preprocessBuffer(imageBuffer);
             const outputs = await this.session.run({ images: tensor });
-            const detections = this.postprocess(outputs, img.width, img.height);
-
+            const detections = this.postprocess(outputs, originalWidth, originalHeight);
             return detections;
         } catch (error) {
             logger.error('Detection failed:', error);
@@ -61,20 +61,32 @@ export class UIDetector {
         }
     }
 
-    private preprocess(img: Image): ort.Tensor {
-        const canvas = createCanvas(MODEL_INPUT_SIZE, MODEL_INPUT_SIZE);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE);
+    /**
+     * Preprocess the raw image buffer using sharp.  This avoids the
+     * expensive canvas conversion and base64 round-trip previously used.
+     */
+    private async preprocessBuffer(buffer: Buffer): Promise<ort.Tensor> {
+        // Resize to MODEL_INPUT_SIZE × MODEL_INPUT_SIZE and return raw RGB pixels.
+        const resized = await sharp(buffer)
+            .resize(MODEL_INPUT_SIZE, MODEL_INPUT_SIZE)
+            .ensureAlpha() // make sure we have 4 channels
+            .raw()
+            .toBuffer();
 
-        // Convert canvas to Float32 tensor [1, 3, H, W]
-        const imageData = ctx.getImageData(0, 0, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE).data;
-        const float32Data = new Float32Array(3 * MODEL_INPUT_SIZE * MODEL_INPUT_SIZE);
+        const numPixels = MODEL_INPUT_SIZE * MODEL_INPUT_SIZE;
+        const float32Data = new Float32Array(3 * numPixels);
 
-        // NCHW format
-        for (let c = 0; c < 3; c++) {
-            for (let i = 0; i < MODEL_INPUT_SIZE * MODEL_INPUT_SIZE; i++) {
-                float32Data[c * MODEL_INPUT_SIZE * MODEL_INPUT_SIZE + i] = imageData[i * 4 + c] / 255.0;
-            }
+        // sharp returns data in RGBA order by default (4 bytes per pixel)
+        for (let i = 0; i < numPixels; i++) {
+            const r = resized[i * 4 + 0];
+            const g = resized[i * 4 + 1];
+            const b = resized[i * 4 + 2];
+            // ignore alpha channel at index i*4 + 3
+
+            // fill NCHW format
+            float32Data[i] = r / 255.0;                       // R plane
+            float32Data[numPixels + i] = g / 255.0;           // G plane
+            float32Data[2 * numPixels + i] = b / 255.0;       // B plane
         }
 
         return new ort.Tensor('float32', float32Data, [1, 3, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE]);

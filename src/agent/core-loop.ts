@@ -22,6 +22,73 @@ import { waitForHuman, WaitForHumanSchema } from '../tools/wait-for-human.js';
 
 // ── Observation formatting ─────────────────────────────────────────
 
+// Utility helpers to prune the accessibility tree before stringification.
+// The goal is to remove invisible or semantically-empty nodes and ensure
+// the resulting JSON stays valid even if truncated to a character budget.
+
+/**
+ * Recursively prune an accessibility snapshot node.
+ *
+ * - Filters nodes that are marked invisible or have zero size.
+ * - Collapses single-child structural wrappers with no role/name.
+ */
+function pruneAxNode(node: any, depth: number = 0): any {
+    if (!node || typeof node !== 'object') return node;
+
+    // drop invisibles
+    if (node.visible === false) return null;
+    if (node.bounds && (node.bounds.width === 0 || node.bounds.height === 0)) {
+        return null;
+    }
+
+    // recursively process children
+    if (Array.isArray(node.children)) {
+        const prunedChildren: any[] = [];
+        for (const child of node.children) {
+            const p = pruneAxNode(child, depth + 1);
+            if (p !== null) prunedChildren.push(p);
+        }
+        node.children = prunedChildren;
+    }
+
+    // collapse meaningless wrappers: a generic role with no name and exactly one child
+    if (
+        node.role === 'generic' &&
+        !node.name &&
+        Array.isArray(node.children) &&
+        node.children.length === 1
+    ) {
+        return node.children[0];
+    }
+
+    return node;
+}
+
+/**
+ * Trim a pruned accessibility tree to fit within `maxChars` when stringified.
+ * This function monotonically removes children from the end until the size
+ * constraint is satisfied.  The algorithm prefers to drop siblings rather than
+ * cut existing nodes in half, guaranteeing valid JSON.
+ */
+function trimAxTreeToSize(node: any, maxChars: number): any {
+    let str = JSON.stringify(node);
+    if (str.length <= maxChars) return node;
+
+    if (node && Array.isArray(node.children)) {
+        // greedily pop children until small enough
+        while (node.children.length > 0 && JSON.stringify(node).length > maxChars) {
+            node.children.pop();
+        }
+        // also recurse into remaining children if still too long
+        for (const child of node.children) {
+            if (JSON.stringify(node).length <= maxChars) break;
+            trimAxTreeToSize(child, maxChars);
+        }
+    }
+    return node;
+}
+
+
 /**
  * Build a structured, token-efficient observation string instead of
  * dumping raw JSON.  Highlights what matters and suppresses noise.
@@ -59,18 +126,23 @@ function formatObservation(
     }
 
     // ── Browser state ──
+
     if (axTree && typeof axTree === 'object') {
-        const tree = axTree as Record<string, unknown>;
-        const role = tree.role || 'unknown';
-        const name = tree.name || '';
-        // Only include a compact summary rather than the whole tree
-        const childCount = Array.isArray(tree.children) ? tree.children.length : 0;
+        // clone and prune so we don't mutate the original object
+        const pruned = pruneAxNode(JSON.parse(JSON.stringify(axTree)));
+        const role = (pruned as any).role || 'unknown';
+        const name = (pruned as any).name || '';
+        const childCount = Array.isArray((pruned as any).children) ? (pruned as any).children.length : 0;
         parts.push(`## Browser State\nPage: "${name}" (role: ${role}, ${childCount} top-level nodes)`);
 
-        // Include a trimmed accessibility snapshot for context
-        const treeStr = JSON.stringify(axTree);
+        // Serialize the pruned tree. If it still exceeds our budget we
+        // trim children iteratively rather than cutting the string, which
+        // would produce invalid JSON and confuse the LLM.
+        let treeStr = JSON.stringify(pruned);
         if (treeStr.length > 3000) {
-            parts.push(`Accessibility Tree (trimmed): ${treeStr.slice(0, 3000)}…`);
+            trimAxTreeToSize(pruned, 3000);
+            treeStr = JSON.stringify(pruned);
+            parts.push(`Accessibility Tree (trimmed): ${treeStr}`);
         } else {
             parts.push(`Accessibility Tree: ${treeStr}`);
         }
@@ -285,13 +357,13 @@ export async function startCoreLoop(objective: string): Promise<void> {
             const screenshot = await captureScreenshot();
             const displays = await listDisplays();
             const axTree = await browser.getAccessibilityTree();
-            const elements = screenshot ? await detector.detect(screenshot.base64) : [];
+            const elements = screenshot ? await detector.detect(screenshot.buffer, screenshot.width, screenshot.height) : [];
 
             // Save screenshot for SDK attachment
             let screenshotPath: string | undefined;
             if (screenshot) {
                 screenshotPath = path.join(tmpDir, `screenshot-${stepRef.current}.png`);
-                fs.writeFileSync(screenshotPath, Buffer.from(screenshot.base64, 'base64'));
+                fs.writeFileSync(screenshotPath, screenshot.buffer);
             }
 
             // ── Tier 2 & 3: Reasoning & Action ──

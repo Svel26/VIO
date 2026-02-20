@@ -1,12 +1,10 @@
 import { chromium } from 'playwright-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import stealth from 'puppeteer-extra-plugin-stealth';
 import { Browser, BrowserContext, Page } from 'playwright';
 import { logger } from '../utils/logger.js';
 
-// Apply stealth plugin
-// Note: playwright-extra augments chromium at runtime; no TS definitions exist
-// for .use() or .launchPersistentContext(), so the casts below are intentional.
-(chromium as unknown as { use: (plugin: unknown) => void }).use(StealthPlugin());
+// Apply stealth plugin – types have been augmented via playright-extra.d.ts
+chromium.use(stealth());
 
 export class BrowserManager {
     private browser: Browser | null = null;

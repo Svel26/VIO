@@ -11,6 +11,7 @@ export interface DisplayInfo {
 }
 
 export interface ScreenshotResult {
+    buffer: Buffer;
     base64: string;
     width: number;
     height: number;
@@ -71,6 +72,7 @@ export async function captureScreenshot(displayId?: string): Promise<ScreenshotR
         const buffer = await screenshot({ screen: targetDisplay.id });
 
         return {
+            buffer,
             base64: buffer.toString('base64'),
             width: targetDisplay.width,
             height: targetDisplay.height,
