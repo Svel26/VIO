@@ -38,12 +38,12 @@ export class UIDetector {
         }
     }
 
-        /**
-     * Run detection on a raw image buffer.  The buffer should contain
-     * a screenshot (PNG, JPEG, etc.) and the caller must provide the
-     * original width/height of the screenshot so that coordinate scaling
-     * can be computed correctly.
-     */
+    /**
+ * Run detection on a raw image buffer.  The buffer should contain
+ * a screenshot (PNG, JPEG, etc.) and the caller must provide the
+ * original width/height of the screenshot so that coordinate scaling
+ * can be computed correctly.
+ */
     async detect(imageBuffer: Buffer, originalWidth: number, originalHeight: number): Promise<DetectedElement[]> {
         if (!this.session) {
             logger.warn('Detector session not initialized. Returning empty detections.');
@@ -66,9 +66,9 @@ export class UIDetector {
      * expensive canvas conversion and base64 round-trip previously used.
      */
     private async preprocessBuffer(buffer: Buffer): Promise<ort.Tensor> {
-        // Resize to MODEL_INPUT_SIZE × MODEL_INPUT_SIZE and return raw RGB pixels.
+        // Resize to MODEL_INPUT_SIZE × MODEL_INPUT_SIZE conceptually, but keep aspect ratio via letterboxing.
         const resized = await sharp(buffer)
-            .resize(MODEL_INPUT_SIZE, MODEL_INPUT_SIZE)
+            .resize({ width: MODEL_INPUT_SIZE, height: MODEL_INPUT_SIZE, fit: 'contain', background: { r: 114, g: 114, b: 114 } })
             .ensureAlpha() // make sure we have 4 channels
             .raw()
             .toBuffer();
@@ -119,8 +119,11 @@ export class UIDetector {
         let candidates: DetectedElement[] = [];
 
         // Scale factors to map the 640x640 detection back to your real screen resolution
-        const scaleX = originalWidth / MODEL_INPUT_SIZE;
-        const scaleY = originalHeight / MODEL_INPUT_SIZE;
+        // Calculate the scaling factor based on the longest edge
+        const scale = Math.max(originalWidth, originalHeight) / MODEL_INPUT_SIZE;
+        // Calculate padding offsets
+        const padX = (MODEL_INPUT_SIZE - (originalWidth / scale)) / 2;
+        const padY = (MODEL_INPUT_SIZE - (originalHeight / scale)) / 2;
 
         for (let i = 0; i < numAnchors; i++) {
             let maxClassConf = 0;
@@ -142,11 +145,11 @@ export class UIDetector {
                 const w = data[2 * numAnchors + i];
                 const h = data[3 * numAnchors + i];
 
-                // Convert to original screen pixels (x1, y1, x2, y2)
-                const x1 = (cx - w / 2) * scaleX;
-                const y1 = (cy - h / 2) * scaleY;
-                const x2 = (cx + w / 2) * scaleX;
-                const y2 = (cy + h / 2) * scaleY;
+                // Convert to original screen pixels (x1, y1, x2, y2), subtracting zero-padding
+                const x1 = ((cx - w / 2) - padX) * scale;
+                const y1 = ((cy - h / 2) - padY) * scale;
+                const x2 = ((cx + w / 2) - padX) * scale;
+                const y2 = ((cy + h / 2) - padY) * scale;
 
                 candidates.push({
                     id: candidates.length, // Temporary ID

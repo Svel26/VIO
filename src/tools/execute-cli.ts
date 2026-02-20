@@ -115,7 +115,7 @@ export async function executeCli(params: ExecuteCliParams): Promise<ExecuteCliRe
 
         const killProcessTree = () => {
             try {
-                if (child.pid) {
+                if (typeof child.pid === 'number') {
                     if (process.platform === 'win32') {
                         execSync(`taskkill /pid ${child.pid} /t /f`);
                     } else {
@@ -144,11 +144,15 @@ export async function executeCli(params: ExecuteCliParams): Promise<ExecuteCliRe
         }, timeoutMs);
 
         child.stdout.on('data', (data) => {
-            stdoutData += data.toString();
+            if (stdoutData.length < CLI_OUTPUT_MAX_LENGTH) {
+                stdoutData += data.toString();
+            }
         });
 
         child.stderr.on('data', (data) => {
-            stderrData += data.toString();
+            if (stderrData.length < CLI_OUTPUT_MAX_LENGTH) {
+                stderrData += data.toString();
+            }
         });
 
         child.on('close', (code) => {
