@@ -62,8 +62,18 @@ If you have failed at the same sub-task 3 or more times:
 
 ### Web vs Desktop
 - For **browser content**: prefer \`execute_javascript\` and \`extract_page_data\` — they target DOM elements directly with zero coordinate error.
-- For **native/desktop apps**: use \`click_ui_enhanced\`, \`type_text\`, \`key_combo\` — these work through vision + mouse.
-- For **OS-level tasks**: use \`execute_cli\` — it's the most reliable path.
+- For **native/desktop apps**: prefer the **PowerShell PID Hooking** pattern via \`execute_cli\` when launching apps and sending text. Never rely on visual window titles (which fail on localized OS like Dutch) or Win32 legacy classes (which fail on Windows 11).
+  - **Pattern:** Launch via \`Start-Process -PassThru\`, grab the \`Id\`, and use \`AppActivate\` on the PID.
+  - **Example:**
+    \`\`\`powershell
+    $process = Start-Process notepad.exe -PassThru
+    Start-Sleep -Seconds 1
+    $wshell = New-Object -ComObject WScript.Shell
+    $wshell.AppActivate($process.Id)
+    Start-Sleep -Milliseconds 500
+    $wshell.SendKeys('Your text here')
+    \`\`\`
+- Use \`click_ui_enhanced\` / \`type_text\` for existing GUI elements only when CLI automation is impossible.
 
 ### Declare Success Carefully
 Only call \`declare_success\` when you have **concrete evidence** the objective is complete:
