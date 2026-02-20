@@ -1,0 +1,11 @@
+[
+  {
+    "description": "Calculate a simple expression using the Calculator app",
+    "objective": "Open the Windows Calculator, compute 123 + 456, and declare success.
+"
+  },
+  {
+    "description": "Search GitHub for the latest version of React and copy it",
+    "objective": "Go to github.com, search for \"React\" repository, find the latest release tag, copy it to Notepad, and declare success."
+  }
+]

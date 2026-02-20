@@ -677,7 +677,7 @@ Platform matrix implementation with unified interface:
 
 | Component | Implementation |
 |:---|:---|
-| Browser launch | Headful (not headless) for maximum compatibility |
+| Browser launch | Headful (not headless) for maximum compatibility; optionally use persistent user data directory (via env var) to mimic a real user browser and preserve login state |
 | CDP session | `Accessibility.getFullAXTree`, `Runtime.evaluate` |
 | Playwright abstraction | `page.evaluate`, `page.goto`, `page.accessibility.snapshot` |
 | DOM-vision correlation | Position overlap matching, text validation |

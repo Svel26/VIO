@@ -1,5 +1,15 @@
 import { CopilotClient, CopilotSession, defineTool } from '@github/copilot-sdk';
 import { logger } from '../utils/logger.js';
+import { REASONING_MODEL, REASONING_TIMEOUT_MS } from '../utils/config.js';
+import { z } from 'zod';
+
+export interface ToolDefinition {
+    name: string;
+    description: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    parameters: z.ZodObject<any>;
+    handler: (args: Record<string, unknown>) => Promise<unknown>;
+}
 
 export class ReasoningAgent {
     private client: CopilotClient;
@@ -9,13 +19,13 @@ export class ReasoningAgent {
         this.client = new CopilotClient();
     }
 
-    async initialize(systemMessage: string, tools: any[]) {
+    async initialize(systemMessage: string, tools: ToolDefinition[]) {
         try {
             logger.info('Initializing Copilot SDK Client...');
             await this.client.start();
 
             this.session = await this.client.createSession({
-                model: 'gpt-4o',
+                model: REASONING_MODEL,
                 systemMessage: {
                     mode: 'replace',
                     content: systemMessage
@@ -47,7 +57,7 @@ export class ReasoningAgent {
         try {
             logger.info('Soliciting reasoning from Copilot...');
 
-            const attachments: any[] = [];
+            const attachments: Array<{ type: 'file'; path: string }> = [];
             if (attachmentPath) {
                 attachments.push({
                     type: 'file',
@@ -60,9 +70,11 @@ export class ReasoningAgent {
             const response = await this.session.sendAndWait({
                 prompt,
                 attachments
-            }, 120000);
+            }, REASONING_TIMEOUT_MS);
 
-            return (response as any)?.data?.content;
+            // The SDK response shape may vary; safely access nested data
+            const responseData = response as { data?: { content?: string } } | undefined;
+            return responseData?.data?.content;
         } catch (error) {
             logger.error('Error during reasoning step:', error);
             return undefined;

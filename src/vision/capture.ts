@@ -2,7 +2,7 @@ import screenshot from 'screenshot-desktop';
 import { logger } from '../utils/logger.js';
 
 export interface DisplayInfo {
-    id: any;
+    id: string | number;
     name: string;
     width: number;
     height: number;
@@ -20,16 +20,30 @@ export interface ScreenshotResult {
 /**
  * Enumerates all connected displays.
  */
+/**
+ * The @types/screenshot-desktop Display type only has { id, name }.
+ * On Windows (and most platforms) the runtime objects also carry
+ * width, height, left, top.  We declare that here.
+ */
+interface RuntimeDisplay {
+    id: string | number;
+    name: string;
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+}
+
 export async function listDisplays(): Promise<DisplayInfo[]> {
     try {
-        const displays = await screenshot.listDisplays();
-        return displays.map((d: any) => ({
+        const displays = await screenshot.listDisplays() as unknown as RuntimeDisplay[];
+        return displays.map((d) => ({
             id: d.id,
             name: d.name,
             width: d.width,
             height: d.height,
             left: d.left,
-            top: d.top
+            top: d.top,
         }));
     } catch (error) {
         logger.error('Failed to enumerate displays:', error);

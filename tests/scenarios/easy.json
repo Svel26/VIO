@@ -1,0 +1,10 @@
+[
+  {
+    "description": "Open a new Notepad window and type \"Hello World\"",
+    "objective": "Launch Notepad and type 'Hello World' then declare success."
+  },
+  {
+    "description": "Open the default web browser and navigate to example.com",
+    "objective": "Open a browser, go to https://example.com and declare success when the page loads."
+  }
+]

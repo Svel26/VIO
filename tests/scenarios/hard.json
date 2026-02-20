@@ -1,0 +1,10 @@
+[
+  {
+    "description": "(WARNING: likely to be blocked) Log in to a Gmail account and send a test email",
+    "objective": "Open a browser and navigate to mail.google.com. Google will almost certainly block the automated context, so use the 'wait_for_human' tool to perform the entire sign‑in in a separate real browser window. Once authenticated manually, switch back to the VIO browser and have it compose an email to yourself with subject \"VIO Test\" and body \"This is a hard task.\" then send and declare success. Note: even after manual login the agent may see the \"not secure\" warning because the page still detects automation. This scenario is included for experimentation only; for reliable email automation use Google's APIs instead."
+  },
+  {
+    "description": "Navigate through a multi-page form and submit data",
+    "objective": "Open a browser, go to https://www.w3schools.com/html/html_forms.asp, fill out the sample form fields with arbitrary values, submit the form, and declare success once a result page appears."
+  }
+]
