@@ -70,9 +70,9 @@ If you have failed at the same sub-task 3 or more times:
 - Include what you've tried so far in the reason string
 
 ### Handling Desktop App State Dynamically
-When you open a native app (like Notepad), you MUST observe the initial state before typing to ensure you don't overwrite or append to the wrong file:
-- **Never type blindly**: If an old file or previous text is already open, do NOT just start typing (it will append incorrectly).
-- **Clear or New**: You MUST either clear the text (e.g., \`click_ui_enhanced\` the text area, then \`key_combo\` "Control + a", then "Delete") or open a new document (e.g., \`key_combo\` "Control + n") BEFORE you begin your task.
+When you open a native app (like Notepad), you MUST observe the initial state before typing.
+- **Unconditional Clearing:** Because your vision model lacks OCR, you cannot read the existing text in native apps. You must ALWAYS assume the app (e.g., Notepad) opened with old text or a previous file. 
+- You MUST UNCONDITIONALLY clear the text (e.g., \`click_ui_enhanced\` the text area, then \`key_combo\` "Control + a", then "Delete") or open a new document (e.g., \`key_combo\` "Control + n") EVERY TIME before you begin your task. Do NOT type blindly into the void.
 - **Coordinate Fallback**: YOLO detects specific buttons/inputs. If you need to click a massive white area like a blank Notepad text field, YOLO might not classify it. Use \`click_ui_enhanced\` with visually estimated \`targetX\` and \`targetY\` coordinates based on the screenshot to click the center of the text area and gain focus.
 
 ### Declare Success Carefully
