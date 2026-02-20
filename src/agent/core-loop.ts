@@ -91,7 +91,7 @@ export async function startCoreLoop(objective: string): Promise<void> {
     ];
 
     await reasoning.initialize(
-        "You are an autonomous computer-controlling assistant. You have a vision system and a stealth browser. " +
+        "You are VIO (Visual Interface Operator), an autonomous computer-controlling assistant. You have a vision system and a stealth browser. " +
         "Prioritize using terminal for OS tasks and Playwright (navigate_to, etc.) for web tasks. " +
         "If you encounter a CAPTCHA, verification screen, or are blocked by bot detection, DO NOT loop. " +
         "Instead, use the 'wait_for_human' tool to ask the user to clear the blockage for you.",
@@ -105,7 +105,7 @@ export async function startCoreLoop(objective: string): Promise<void> {
     try {
         while (isRunning) {
             step++;
-            logger.info(`--- Phase 6 Reasoning Step ${step} ---`);
+            logger.info(`--- VIO Reasoning Step ${step} ---`);
 
             // Tier 1: Observation
             // We prioritize the browser screenshot if it's the active context,
