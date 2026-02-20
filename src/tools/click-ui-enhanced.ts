@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
 import { UIDetector, DetectedElement } from '../vision/detector.js';
-import { captureScreenshot } from '../vision/capture.js';
+import { captureScreenshot, listDisplays } from '../vision/capture.js';
 import { clickAt } from './input-sim.js';
 
 export const ClickUiEnhancedSchema = z.object({
@@ -20,7 +20,7 @@ export async function clickUiEnhanced(params: ClickUiEnhancedParams, detector: U
     const { elementText, elementType, offsetX, offsetY } = params;
     logger.info(`Enhanced click requested for: ${elementText || 'any'} ${elementType || 'element'}`);
 
-    // 1. Capture current state
+    // 1. Capture current state (primary or targeted display)
     const observation = await captureScreenshot();
     if (!observation) return false;
 
@@ -35,9 +35,20 @@ export async function clickUiEnhanced(params: ClickUiEnhancedParams, detector: U
         return false;
     }
 
-    // 4. Execute click
-    const finalX = target.center.x + offsetX;
-    const finalY = target.center.y + offsetY;
+    // 4. Resolve multi-display offsets
+    const displays = await listDisplays();
+    const currentDisplay = observation.displayId
+        ? displays.find(d => d.id.toString() === observation.displayId)
+        : displays.find(d => d.left === 0 && d.top === 0);
+
+    const displayLeft = currentDisplay?.left || 0;
+    const displayTop = currentDisplay?.top || 0;
+
+    // 5. Execute click with global coordinates
+    const finalX = target.center.x + offsetX + displayLeft;
+    const finalY = target.center.y + offsetY + displayTop;
+
+    logger.info(`Final global coordinates: (${finalX}, ${finalY}) on display ${currentDisplay?.name || 'unknown'}`);
 
     await clickAt(finalX, finalY);
     return true;

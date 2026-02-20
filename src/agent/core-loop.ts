@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { logger } from '../utils/logger.js';
-import { captureScreenshot } from '../vision/capture.js';
+import { captureScreenshot, listDisplays } from '../vision/capture.js';
 import { UIDetector } from '../vision/detector.js';
 import { BrowserManager } from '../vision/browser.js';
 import { ReasoningAgent } from './reasoning.js';
@@ -105,12 +105,13 @@ export async function startCoreLoop(objective: string): Promise<void> {
     try {
         while (isRunning) {
             step++;
-            logger.info(`--- Phase 4 Reasoning Step ${step} ---`);
+            logger.info(`--- Phase 6 Reasoning Step ${step} ---`);
 
             // Tier 1: Observation
             // We prioritize the browser screenshot if it's the active context,
             // but the general screen capture is safer for full-system control.
             const screenshot = await captureScreenshot();
+            const displays = await listDisplays();
             const axTree = await browser.getAccessibilityTree();
             const elements = screenshot ? await detector.detect(screenshot.base64) : [];
 
@@ -123,6 +124,8 @@ export async function startCoreLoop(objective: string): Promise<void> {
 
             // Tier 2 & 3: Reasoning & Action
             const prompt = `Objective: ${objective}\n` +
+                `Connected Displays: ${JSON.stringify(displays, null, 2)}\n` +
+                `Current Observation (Display ID: ${screenshot?.displayId || 'Unknown'}):\n` +
                 `Browser Accessibility Tree: ${JSON.stringify(axTree)}\n` +
                 `Detected Screen Elements: ${JSON.stringify(elements, null, 2)}`;
 
