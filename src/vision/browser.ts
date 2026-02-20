@@ -1,5 +1,10 @@
-import { chromium, Browser, BrowserContext, Page } from 'playwright';
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { Browser, BrowserContext, Page } from 'playwright';
 import { logger } from '../utils/logger.js';
+
+// Apply stealth plugin
+(chromium as any).use(StealthPlugin());
 
 export class BrowserManager {
     private browser: Browser | null = null;
@@ -8,13 +13,20 @@ export class BrowserManager {
 
     async initialize() {
         try {
-            logger.info('Initializing Playwright Browser (Headful)...');
-            this.browser = await chromium.launch({
-                headless: false, // Per plan.md: headful for maximum compatibility
+            logger.info('Initializing Stealth Browser (playwright-extra)...');
+            this.browser = await (chromium as any).launch({
+                headless: false,
             });
-            this.context = await this.browser.newContext();
+
+            // Set up a structured context with a common user agent
+            this.context = await this.browser!.newContext({
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                viewport: { width: 1280, height: 720 },
+                deviceScaleFactor: 1,
+            });
+
             this.page = await this.context.newPage();
-            logger.info('Browser initialized successfully.');
+            logger.info('Stealth Browser initialized successfully.');
         } catch (error) {
             logger.error('Failed to initialize browser:', error);
             throw error;

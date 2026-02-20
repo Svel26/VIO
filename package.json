@@ -24,6 +24,8 @@
     "canvas": "^3.2.1",
     "onnxruntime-node": "^1.24.2",
     "playwright": "^1.58.2",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "screenshot-desktop": "^1.15.3",
     "zod": "^4.3.6"
   }

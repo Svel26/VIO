@@ -15,6 +15,7 @@ import { declareSuccess, DeclareSuccessSchema } from '../tools/declare-success.j
 import { navigateTo, NavigateToSchema } from '../tools/navigate-to.js';
 import { executeJavaScript, ExecuteJavaScriptSchema } from '../tools/execute-javascript.js';
 import { extractPageData, ExtractPageDataSchema } from '../tools/extract-page-data.js';
+import { waitForHuman, WaitForHumanSchema } from '../tools/wait-for-human.js';
 
 export async function startCoreLoop(objective: string): Promise<void> {
     const detector = new UIDetector();
@@ -73,6 +74,12 @@ export async function startCoreLoop(objective: string): Promise<void> {
             handler: async (args: any) => await extractPageData(args, await browser.getPage())
         },
         {
+            name: 'wait_for_human',
+            description: 'Pause the agent and wait for a human to perform an action (like solving a CAPTCHA or confirming a sensitive step).',
+            parameters: WaitForHumanSchema,
+            handler: async (args: any) => await waitForHuman(args)
+        },
+        {
             name: 'declare_success',
             description: 'Signal that the objective has been reached',
             parameters: DeclareSuccessSchema,
@@ -84,9 +91,10 @@ export async function startCoreLoop(objective: string): Promise<void> {
     ];
 
     await reasoning.initialize(
-        "You are an autonomous computer-controlling assistant. You have a vision system and a browser. " +
+        "You are an autonomous computer-controlling assistant. You have a vision system and a stealth browser. " +
         "Prioritize using terminal for OS tasks and Playwright (navigate_to, etc.) for web tasks. " +
-        "Acknowledge the vision data for context.",
+        "If you encounter a CAPTCHA, verification screen, or are blocked by bot detection, DO NOT loop. " +
+        "Instead, use the 'wait_for_human' tool to ask the user to clear the blockage for you.",
         tools
     );
 
@@ -97,7 +105,7 @@ export async function startCoreLoop(objective: string): Promise<void> {
     try {
         while (isRunning) {
             step++;
-            logger.info(`--- Phase 3 Reasoning Step ${step} ---`);
+            logger.info(`--- Phase 4 Reasoning Step ${step} ---`);
 
             // Tier 1: Observation
             // We prioritize the browser screenshot if it's the active context,
