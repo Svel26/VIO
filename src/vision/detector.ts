@@ -1,3 +1,4 @@
+import fs from 'fs';
 import * as ort from 'onnxruntime-node';
 import { createCanvas, loadImage, Image } from 'canvas';
 import { logger } from '../utils/logger.js';
@@ -22,9 +23,15 @@ export class UIDetector {
     async initialize() {
         try {
             logger.info(`Initializing ONNX session with model: ${this.modelPath}`);
-            // Note: This requires the .onnx file to exist
-            // this.session = await ort.InferenceSession.create(this.modelPath);
-            logger.info('Detector initialized (Waiting for model file).');
+
+            // Check if model file exists
+            if (!fs.existsSync(this.modelPath)) {
+                logger.warn(`Model file not found at ${this.modelPath}. Element detection will be disabled.`);
+                return;
+            }
+
+            this.session = await ort.InferenceSession.create(this.modelPath);
+            logger.info('Detector ONNX session initialized successfully.');
         } catch (error) {
             logger.error('Failed to initialize detector:', error);
         }

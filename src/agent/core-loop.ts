@@ -4,24 +4,31 @@ import os from 'os';
 import { logger } from '../utils/logger.js';
 import { captureScreenshot } from '../vision/capture.js';
 import { UIDetector } from '../vision/detector.js';
+import { BrowserManager } from '../vision/browser.js';
 import { ReasoningAgent } from './reasoning.js';
 
-// Tool imports for registration
+// Tool imports
 import { executeCli, ExecuteCliSchema } from '../tools/execute-cli.js';
 import { clickUiEnhanced, ClickUiEnhancedSchema } from '../tools/click-ui-enhanced.js';
 import { typeText, TypeTextSchema, keyCombo, KeyComboSchema } from '../tools/input-sim.js';
 import { declareSuccess, DeclareSuccessSchema } from '../tools/declare-success.js';
+import { navigateTo, NavigateToSchema } from '../tools/navigate-to.js';
+import { executeJavaScript, ExecuteJavaScriptSchema } from '../tools/execute-javascript.js';
+import { extractPageData, ExtractPageDataSchema } from '../tools/extract-page-data.js';
 
 export async function startCoreLoop(objective: string): Promise<void> {
     const detector = new UIDetector();
     await detector.initialize();
 
+    const browser = new BrowserManager();
+    // We initialize the browser only if needed, or eagerly if preferred.
+    // Eagerly launching for Phase 3 as browser focus is primary.
+    await browser.initialize();
+
     const reasoning = new ReasoningAgent();
 
     let isRunning = true;
 
-    // Tools are registered with handlers. 
-    // The Copilot SDK will call these directly during its reasoning loop.
     const tools = [
         {
             name: 'execute_cli',
@@ -48,6 +55,24 @@ export async function startCoreLoop(objective: string): Promise<void> {
             handler: async (args: any) => await keyCombo(args)
         },
         {
+            name: 'navigate_to',
+            description: 'Navigate to a URL in the browser',
+            parameters: NavigateToSchema,
+            handler: async (args: any) => await navigateTo(args, await browser.getPage())
+        },
+        {
+            name: 'execute_javascript',
+            description: 'Execute JS on the current web page',
+            parameters: ExecuteJavaScriptSchema,
+            handler: async (args: any) => await executeJavaScript(args, await browser.getPage())
+        },
+        {
+            name: 'extract_page_data',
+            description: 'Extract data/content from the current web page',
+            parameters: ExtractPageDataSchema,
+            handler: async (args: any) => await extractPageData(args, await browser.getPage())
+        },
+        {
             name: 'declare_success',
             description: 'Signal that the objective has been reached',
             parameters: DeclareSuccessSchema,
@@ -59,7 +84,9 @@ export async function startCoreLoop(objective: string): Promise<void> {
     ];
 
     await reasoning.initialize(
-        "You are an autonomous computer-controlling agent. Use the vision data and tools provided to fulfill the objective.",
+        "You are an autonomous computer-controlling assistant. You have a vision system and a browser. " +
+        "Prioritize using terminal for OS tasks and Playwright (navigate_to, etc.) for web tasks. " +
+        "Acknowledge the vision data for context.",
         tools
     );
 
@@ -70,10 +97,13 @@ export async function startCoreLoop(objective: string): Promise<void> {
     try {
         while (isRunning) {
             step++;
-            logger.info(`--- Agent Reasoning Step ${step} ---`);
+            logger.info(`--- Phase 3 Reasoning Step ${step} ---`);
 
             // Tier 1: Observation
+            // We prioritize the browser screenshot if it's the active context,
+            // but the general screen capture is safer for full-system control.
             const screenshot = await captureScreenshot();
+            const axTree = await browser.getAccessibilityTree();
             const elements = screenshot ? await detector.detect(screenshot.base64) : [];
 
             // Save screenshot for SDK attachment
@@ -84,20 +114,23 @@ export async function startCoreLoop(objective: string): Promise<void> {
             }
 
             // Tier 2 & 3: Reasoning & Action
-            // The SDK's sendAndWait will perform both thinking and tool execution.
-            const prompt = `Objective: ${objective}\nDetected UI Elements: ${JSON.stringify(elements, null, 2)}`;
+            const prompt = `Objective: ${objective}\n` +
+                `Browser Accessibility Tree: ${JSON.stringify(axTree)}\n` +
+                `Detected Screen Elements: ${JSON.stringify(elements, null, 2)}`;
+
             await reasoning.think(prompt, screenshotPath);
 
-            // Brief pause to stabilize system state
             await new Promise(r => setTimeout(r, 1000));
 
-            // Safety limit
-            if (step >= 10) {
-                logger.warn('Agent reached maximum step limit (10). Terminating.');
+            if (step >= 15) { // Increased for Phase 3
+                logger.warn('Agent reached maximum step limit (15). Terminating.');
                 isRunning = false;
             }
         }
+    } catch (error) {
+        logger.error('Fatal error in core loop:', error);
     } finally {
         await reasoning.cleanup();
+        await browser.cleanup();
     }
 }

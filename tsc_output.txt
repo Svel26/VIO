@@ -1,0 +1,3 @@
+src/tools/extract-page-data.ts(28,31): error TS2339: Property 'innerText' does not exist on type 'Element'.
+src/tools/input-sim.ts(3,24): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../utils/logger.js'?
+src/vision/browser.ts(34,36): error TS2339: Property 'accessibility' does not exist on type 'Page'.

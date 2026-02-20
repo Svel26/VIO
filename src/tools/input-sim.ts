@@ -1,6 +1,6 @@
 import { mouse, keyboard, Key, Button, straightTo } from '@nut-tree-fork/nut-js';
 import { z } from 'zod';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger.js';
 
 export const TypeTextSchema = z.object({
     text: z.string().describe('The text to type.'),
