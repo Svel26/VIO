@@ -62,18 +62,9 @@ If you have failed at the same sub-task 3 or more times:
 
 ### Web vs Desktop
 - For **browser content**: prefer \`execute_javascript\` and \`extract_page_data\` — they target DOM elements directly with zero coordinate error.
-- For **native/desktop apps**: prefer the **PowerShell PID Hooking** pattern via \`execute_cli\` when launching apps and sending text. Never rely on visual window titles (which fail on localized OS like Dutch) or Win32 legacy classes (which fail on Windows 11).
-  - **Pattern:** Launch via \`Start-Process -PassThru\`, grab the \`Id\`, and use \`AppActivate\` on the PID.
-  - **Example:**
-    \`\`\`powershell
-    $process = Start-Process notepad.exe -PassThru
-    Start-Sleep -Seconds 1
-    $wshell = New-Object -ComObject WScript.Shell
-    $wshell.AppActivate($process.Id)
-    Start-Sleep -Milliseconds 500
-    $wshell.SendKeys('Your text here')
-    \`\`\`
-- Use \`click_ui_enhanced\` / \`type_text\` for existing GUI elements only when CLI automation is impossible.
+- For **native/desktop apps**: ALWAYS rely on vision (\`click_ui_enhanced\`, \`type_text\`, \`key_combo\`). Treat every desktop UI dynamically.
+  - **Observe first**: When you open an app (e.g. via terminal), look at the screen. If an old file is open in Notepad, either clear it or open a new tab using native UI clicks.
+  - **No CLI Hacks**: NEVER use CLI injection shortcuts (like PowerShell \`SendKeys\` or \`AppActivate\`) to force input into native apps. You must interact exactly like a human would, relying purely on visual observation and simulated inputs, because every OS environment behaves differently.
 
 ### Declare Success Carefully
 Only call \`declare_success\` when you have **concrete evidence** the objective is complete:
