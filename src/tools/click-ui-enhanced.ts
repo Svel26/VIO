@@ -8,6 +8,8 @@ import { clickAt } from './input-sim.js';
 export const ClickUiEnhancedSchema = z.object({
     elementText: z.string().optional().describe('Text to search for on the element.'),
     elementType: z.string().optional().describe('Type of element to click (button, link, etc.).'),
+    targetX: z.number().optional().describe('Fallback X coordinate (0-1920) if element cannot be found by YOLO classification.'),
+    targetY: z.number().optional().describe('Fallback Y coordinate (0-1080) if element cannot be found by YOLO classification.'),
     offsetX: z.number().optional().default(0),
     offsetY: z.number().optional().default(0),
 });
@@ -61,7 +63,19 @@ export async function clickUiEnhanced(params: ClickUiEnhancedParams, detector: U
 }
 
 function resolveTarget(params: ClickUiEnhancedParams, elements: DetectedElement[]): DetectedElement | null {
-    const { elementText, elementType } = params;
+    const { elementText, elementType, targetX, targetY } = params;
+
+    // Direct coordinate fallback (useful for giant unclassified windows like Notepad)
+    if (targetX !== undefined && targetY !== undefined && !elementText && !elementType) {
+        logger.info(`Using direct coordinate fallback: (${targetX}, ${targetY})`);
+        return {
+            id: -1,
+            type: 'coordinate_fallback',
+            bounds: { x1: targetX, y1: targetY, x2: targetX, y2: targetY },
+            center: { x: targetX, y: targetY },
+            confidence: 1.0
+        };
+    }
 
     // Simple heuristic matching
     return elements.find(el => {

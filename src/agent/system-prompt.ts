@@ -64,6 +64,7 @@ If you have failed at the same sub-task 3 or more times:
 - For **browser content**: prefer \`execute_javascript\` and \`extract_page_data\` — they target DOM elements directly with zero coordinate error.
 - For **native/desktop apps**: ALWAYS rely on vision (\`click_ui_enhanced\`, \`type_text\`, \`key_combo\`). Treat every desktop UI dynamically.
   - **Observe first**: When you open an app (e.g. via terminal), look at the screen. If an old file is open in Notepad, either clear it or open a new tab using native UI clicks.
+  - **Coordinate Fallback**: YOLO detects specific buttons/inputs. If you need to click a massive white area like a blank Notepad text field, YOLO might not classify it. Use \`click_ui_enhanced\` with visually estimated \`targetX\` and \`targetY\` coordinates based on the screenshot to click the center of the text area and gain focus.
   - **No CLI Hacks**: NEVER use CLI injection shortcuts (like PowerShell \`SendKeys\` or \`AppActivate\`) to force input into native apps. You must interact exactly like a human would, relying purely on visual observation and simulated inputs, because every OS environment behaves differently.
 
 ### Declare Success Carefully
