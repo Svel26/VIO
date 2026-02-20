@@ -12,6 +12,8 @@ export class BrowserManager {
     private page: Page | null = null;
 
     async initialize() {
+        if (this.browser || this.page) return;
+
         try {
             logger.info('Initializing Stealth Browser (playwright-extra)...');
 

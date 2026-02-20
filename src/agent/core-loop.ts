@@ -268,7 +268,6 @@ export async function startCoreLoop(objective: string): Promise<void> {
     await detector.initialize();
 
     const browser = new BrowserManager();
-    await browser.initialize();
 
     const reasoning = new ReasoningAgent();
     const history = new StepHistory();
